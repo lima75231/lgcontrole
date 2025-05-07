@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Controle Financeiro</title>
+  <title>Controle Financeiro Mensal</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -13,7 +13,7 @@
     h2 {
       text-align: center;
     }
-    .form {
+    .form, .filtros {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
@@ -52,7 +52,13 @@
 </head>
 <body>
 
-  <h2>Controle Financeiro</h2>
+  <h2>Controle Financeiro Mensal</h2>
+
+  <div class="filtros">
+    <label>Filtrar por mês:
+      <input type="month" id="filtro-mes" onchange="filtrarPorMes()">
+    </label>
+  </div>
 
   <div class="form">
     <div class="form-group">
@@ -77,13 +83,13 @@
         <option value="parcelado">Parcelado</option>
       </select>
     </div>
-    <div class="form-group" id="parcelas-group" style="display: none;">
-      <label>Número de parcelas</label>
-      <input type="number" id="parcelas">
+    <div class="form-group">
+      <label>Nº Parcelas</label>
+      <input type="number" id="parcelas" disabled>
     </div>
-    <div class="form-group" id="data-parcela-group" style="display: none;">
-      <label>Data da 1ª parcela</label>
-      <input type="date" id="data-parcela">
+    <div class="form-group">
+      <label>Data do lançamento</label>
+      <input type="date" id="data-lancamento">
     </div>
     <div class="form-group" style="align-self: flex-end;">
       <button onclick="adicionarLancamento()">Adicionar</button>
@@ -95,12 +101,12 @@
   <table>
     <thead>
       <tr>
+        <th>Data</th>
         <th>Descrição</th>
         <th>Valor</th>
         <th>Tipo</th>
         <th>Compra</th>
         <th>Parcelas</th>
-        <th>1ª Parcela</th>
       </tr>
     </thead>
     <tbody id="tabela-lancamentos"></tbody>
@@ -111,8 +117,7 @@
   </div>
 
   <script>
-    let entradas = 0;
-    let saidas = 0;
+    let todosLancamentos = [];
 
     function formatarValor(valor) {
       return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -120,18 +125,7 @@
 
     function toggleParcelas() {
       const tipoCompra = document.getElementById('tipo-compra').value;
-      document.getElementById('parcelas-group').style.display = tipoCompra === 'parcelado' ? 'block' : 'none';
-      document.getElementById('data-parcela-group').style.display = tipoCompra === 'parcelado' ? 'block' : 'none';
-    }
-
-    function atualizarGrafico() {
-      grafico.data.datasets[0].data = [entradas, saidas];
-      grafico.update();
-    }
-
-    function atualizarSaldo() {
-      const saldo = entradas - saidas;
-      document.getElementById('saldo').textContent = 'Saldo: ' + formatarValor(saldo);
+      document.getElementById('parcelas').disabled = tipoCompra !== 'parcelado';
     }
 
     function adicionarLancamento() {
@@ -140,39 +134,63 @@
       const tipo = document.getElementById('tipo').value;
       const tipoCompra = document.getElementById('tipo-compra').value;
       const parcelas = tipoCompra === 'parcelado' ? document.getElementById('parcelas').value : '-';
-      const dataParcela = tipoCompra === 'parcelado' ? document.getElementById('data-parcela').value : '-';
+      const dataLancamento = document.getElementById('data-lancamento').value;
 
-      if (!descricao || isNaN(valor)) {
-        alert('Preencha os campos corretamente.');
+      if (!descricao || isNaN(valor) || !dataLancamento) {
+        alert('Preencha todos os campos corretamente.');
         return;
       }
 
-      const tabela = document.getElementById('tabela-lancamentos');
-      const linha = tabela.insertRow();
-      linha.insertCell(0).textContent = descricao;
-      linha.insertCell(1).textContent = formatarValor(valor);
-      linha.insertCell(2).textContent = tipo;
-      linha.insertCell(3).textContent = tipoCompra === 'parcelado' ? 'Parcelado' : 'À vista';
-      linha.insertCell(4).textContent = parcelas;
-      linha.insertCell(5).textContent = dataParcela;
+      const lancamento = {
+        data: dataLancamento,
+        descricao,
+        valor,
+        tipo,
+        tipoCompra,
+        parcelas
+      };
 
-      if (tipo === 'entrada') {
-        entradas += valor;
-      } else {
-        saidas += valor;
-      }
+      todosLancamentos.push(lancamento);
 
-      atualizarSaldo();
-      atualizarGrafico();
-
-      // Limpa os campos
       document.getElementById('descricao').value = '';
       document.getElementById('valor').value = '';
       document.getElementById('tipo').value = 'entrada';
       document.getElementById('tipo-compra').value = 'avista';
       document.getElementById('parcelas').value = '';
-      document.getElementById('data-parcela').value = '';
-      toggleParcelas();
+      document.getElementById('parcelas').disabled = true;
+      document.getElementById('data-lancamento').value = '';
+
+      filtrarPorMes();
+    }
+
+    function filtrarPorMes() {
+      const filtro = document.getElementById('filtro-mes').value;
+      const tabela = document.getElementById('tabela-lancamentos');
+      tabela.innerHTML = '';
+
+      let entradas = 0;
+      let saidas = 0;
+
+      todosLancamentos.forEach(lanc => {
+        if (filtro === '' || lanc.data.startsWith(filtro)) {
+          const linha = tabela.insertRow();
+          linha.insertCell(0).textContent = lanc.data;
+          linha.insertCell(1).textContent = lanc.descricao;
+          linha.insertCell(2).textContent = formatarValor(lanc.valor);
+          linha.insertCell(3).textContent = lanc.tipo;
+          linha.insertCell(4).textContent = lanc.tipoCompra === 'parcelado' ? 'Parcelado' : 'À vista';
+          linha.insertCell(5).textContent = lanc.parcelas;
+
+          if (lanc.tipo === 'entrada') {
+            entradas += lanc.valor;
+          } else {
+            saidas += lanc.valor;
+          }
+        }
+      });
+
+      document.getElementById('saldo').textContent = 'Saldo: ' + formatarValor(entradas - saidas);
+      atualizarGrafico(entradas, saidas);
     }
 
     const ctx = document.getElementById('grafico').getContext('2d');
@@ -196,6 +214,11 @@
         }
       }
     });
+
+    function atualizarGrafico(entradas, saidas) {
+      grafico.data.datasets[0].data = [entradas, saidas];
+      grafico.update();
+    }
   </script>
 </body>
 </html>
