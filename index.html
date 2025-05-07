@@ -112,6 +112,8 @@
     <tbody id="tabela-lancamentos"></tbody>
   </table>
 
+  <div id="relatorio-mensal" style="margin-top: 20px; font-size: 16px; background: #eef; padding: 15px; border-radius: 6px;"></div>
+
   <div id="grafico-container">
     <canvas id="grafico"></canvas>
   </div>
@@ -164,6 +166,57 @@
     }
 
     function filtrarPorMes() {
+  const filtro = document.getElementById('filtro-mes').value;
+  const tabela = document.getElementById('tabela-lancamentos');
+  const relatorio = document.getElementById('relatorio-mensal');
+  tabela.innerHTML = '';
+  relatorio.innerHTML = '';
+
+  let entradas = 0;
+  let saidas = 0;
+  let totalGastos = 0;
+  let contagem = 0;
+
+  todosLancamentos.forEach(lanc => {
+    if (filtro === '' || lanc.data.startsWith(filtro)) {
+      const linha = tabela.insertRow();
+      linha.insertCell(0).textContent = lanc.data;
+      linha.insertCell(1).textContent = lanc.descricao;
+      linha.insertCell(2).textContent = formatarValor(lanc.valor);
+      linha.insertCell(3).textContent = lanc.tipo;
+      linha.insertCell(4).textContent = lanc.tipoCompra === 'parcelado' ? 'Parcelado' : 'À vista';
+      linha.insertCell(5).textContent = lanc.parcelas;
+
+      if (lanc.tipo === 'entrada') {
+        entradas += lanc.valor;
+      } else {
+        saidas += lanc.valor;
+        totalGastos += lanc.valor;
+      }
+
+      contagem++;
+    }
+  });
+
+  document.getElementById('saldo').textContent = 'Saldo: ' + formatarValor(entradas - saidas);
+  atualizarGrafico(entradas, saidas);
+
+  if (filtro) {
+    const [ano, mes] = filtro.split('-');
+    const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const nomeMes = meses[parseInt(mes) - 1];
+
+    relatorio.innerHTML = `
+      <strong>📅 Relatório de ${nomeMes}/${ano}</strong><br><br>
+      ✅ Entradas: <strong>${formatarValor(entradas)}</strong><br>
+      ❌ Saídas: <strong>${formatarValor(saidas)}</strong><br>
+      💰 Saldo do mês: <strong>${formatarValor(entradas - saidas)}</strong><br>
+      🔢 Nº de lançamentos: <strong>${contagem}</strong><br>
+      📉 Média de saídas: <strong>${contagem > 0 ? formatarValor(totalGastos / contagem) : 'R$ 0,00'}</strong>
+    `;
+  }
+}
+function filtrarPorMes() {
       const filtro = document.getElementById('filtro-mes').value;
       const tabela = document.getElementById('tabela-lancamentos');
       tabela.innerHTML = '';
