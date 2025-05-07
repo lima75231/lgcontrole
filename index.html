@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Controle Financeiro</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background-color: #f9f9f9;
+    }
+    h2 {
+      text-align: center;
+    }
+    .form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      flex: 1 1 200px;
+      display: flex;
+      flex-direction: column;
+    }
+    input, select, button {
+      padding: 8px;
+      font-size: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px;
+      text-align: left;
+      font-size: 14px;
+    }
+    #saldo {
+      font-size: 18px;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    #grafico-container {
+      max-width: 600px;
+      margin: 40px auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Controle Financeiro</h2>
+
+  <div class="form">
+    <div class="form-group">
+      <label>Descrição</label>
+      <input type="text" id="descricao">
+    </div>
+    <div class="form-group">
+      <label>Valor</label>
+      <input type="number" id="valor">
+    </div>
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="tipo">
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Tipo de compra</label>
+      <select id="tipo-compra" onchange="toggleParcelas()">
+        <option value="avista">À vista</option>
+        <option value="parcelado">Parcelado</option>
+      </select>
+    </div>
+    <div class="form-group" id="parcelas-group" style="display: none;">
+      <label>Número de parcelas</label>
+      <input type="number" id="parcelas">
+    </div>
+    <div class="form-group" id="data-parcela-group" style="display: none;">
+      <label>Data da 1ª parcela</label>
+      <input type="date" id="data-parcela">
+    </div>
+    <div class="form-group" style="align-self: flex-end;">
+      <button onclick="adicionarLancamento()">Adicionar</button>
+    </div>
+  </div>
+
+  <div id="saldo">Saldo: R$ 0,00</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Descrição</th>
+        <th>Valor</th>
+        <th>Tipo</th>
+        <th>Compra</th>
+        <th>Parcelas</th>
+        <th>1ª Parcela</th>
+      </tr>
+    </thead>
+    <tbody id="tabela-lancamentos"></tbody>
+  </table>
+
+  <div id="grafico-container">
+    <canvas id="grafico"></canvas>
+  </div>
+
+  <script>
+    let entradas = 0;
+    let saidas = 0;
+
+    function formatarValor(valor) {
+      return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function toggleParcelas() {
+      const tipoCompra = document.getElementById('tipo-compra').value;
+      document.getElementById('parcelas-group').style.display = tipoCompra === 'parcelado' ? 'block' : 'none';
+      document.getElementById('data-parcela-group').style.display = tipoCompra === 'parcelado' ? 'block' : 'none';
+    }
+
+    function atualizarGrafico() {
+      grafico.data.datasets[0].data = [entradas, saidas];
+      grafico.update();
+    }
+
+    function atualizarSaldo() {
+      const saldo = entradas - saidas;
+      document.getElementById('saldo').textContent = 'Saldo: ' + formatarValor(saldo);
+    }
+
+    function adicionarLancamento() {
+      const descricao = document.getElementById('descricao').value;
+      const valor = parseFloat(document.getElementById('valor').value);
+      const tipo = document.getElementById('tipo').value;
+      const tipoCompra = document.getElementById('tipo-compra').value;
+      const parcelas = tipoCompra === 'parcelado' ? document.getElementById('parcelas').value : '-';
+      const dataParcela = tipoCompra === 'parcelado' ? document.getElementById('data-parcela').value : '-';
+
+      if (!descricao || isNaN(valor)) {
+        alert('Preencha os campos corretamente.');
+        return;
+      }
+
+      const tabela = document.getElementById('tabela-lancamentos');
+      const linha = tabela.insertRow();
+      linha.insertCell(0).textContent = descricao;
+      linha.insertCell(1).textContent = formatarValor(valor);
+      linha.insertCell(2).textContent = tipo;
+      linha.insertCell(3).textContent = tipoCompra === 'parcelado' ? 'Parcelado' : 'À vista';
+      linha.insertCell(4).textContent = parcelas;
+      linha.insertCell(5).textContent = dataParcela;
+
+      if (tipo === 'entrada') {
+        entradas += valor;
+      } else {
+        saidas += valor;
+      }
+
+      atualizarSaldo();
+      atualizarGrafico();
+
+      // Limpa os campos
+      document.getElementById('descricao').value = '';
+      document.getElementById('valor').value = '';
+      document.getElementById('tipo').value = 'entrada';
+      document.getElementById('tipo-compra').value = 'avista';
+      document.getElementById('parcelas').value = '';
+      document.getElementById('data-parcela').value = '';
+      toggleParcelas();
+    }
+
+    const ctx = document.getElementById('grafico').getContext('2d');
+    const grafico = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Entradas', 'Saídas'],
+        datasets: [{
+          label: 'Total',
+          data: [0, 0],
+          backgroundColor: ['green', 'red']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
