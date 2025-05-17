@@ -119,142 +119,7 @@
     <canvas id="grafico"></canvas>
   </div>
 
-  <script>
-    let todosLancamentos = [];
-    let contadorId = 0;
-
-    function formatarValor(valor) {
-      return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    function toggleParcelas() {
-      const tipoCompra = document.getElementById('tipo-compra').value;
-      document.getElementById('parcelas').disabled = tipoCompra !== 'parcelado';
-    }
-
-    function adicionarLancamento() {
-      const descricao = document.getElementById('descricao').value;
-      const valor = parseFloat(document.getElementById('valor').value);
-      const tipo = document.getElementById('tipo').value;
-      const tipoCompra = document.getElementById('tipo-compra').value;
-      const parcelas = tipoCompra === 'parcelado' ? document.getElementById('parcelas').value : '-';
-      const dataLancamento = document.getElementById('data-lancamento').value;
-
-      if (!descricao || isNaN(valor) || !dataLancamento) {
-        alert('Preencha todos os campos corretamente.');
-        return;
-      }
-
-      const lancamento = {
-        id: contadorId++,
-        data: dataLancamento,
-        descricao,
-        valor,
-        tipo,
-        tipoCompra,
-        parcelas
-      };
-
-      todosLancamentos.push(lancamento);
-
-      document.getElementById('descricao').value = '';
-      document.getElementById('valor').value = '';
-      document.getElementById('tipo').value = 'entrada';
-      document.getElementById('tipo-compra').value = 'avista';
-      document.getElementById('parcelas').value = '';
-      document.getElementById('parcelas').disabled = true;
-      document.getElementById('data-lancamento').value = '';
-
-      filtrarPorMes();
-    }
-
-    function excluirLancamento(id) {
-      todosLancamentos = todosLancamentos.filter(l => l.id !== id);
-      filtrarPorMes();
-    }
-
-    function filtrarPorMes() {
-      const filtro = document.getElementById('filtro-mes').value;
-      const tabela = document.getElementById('tabela-lancamentos');
-      const relatorio = document.getElementById('relatorio-mensal');
-      tabela.innerHTML = '';
-      relatorio.innerHTML = '';
-
-      let entradas = 0, saidas = 0, totalGastos = 0, contagem = 0;
-
-      todosLancamentos.forEach(lanc => {
-        if (filtro === '' || lanc.data.startsWith(filtro)) {
-          const linha = tabela.insertRow();
-          linha.insertCell(0).textContent = lanc.data;
-          linha.insertCell(1).textContent = lanc.descricao;
-          linha.insertCell(2).textContent = formatarValor(lanc.valor);
-          linha.insertCell(3).textContent = lanc.tipo;
-          linha.insertCell(4).textContent = lanc.tipoCompra === 'parcelado' ? 'Parcelado' : 'À vista';
-          linha.insertCell(5).textContent = lanc.parcelas;
-
-          const celAcao = linha.insertCell(6);
-          const btn = document.createElement('button');
-          btn.textContent = 'Excluir';
-          btn.onclick = () => excluirLancamento(lanc.id);
-          celAcao.appendChild(btn);
-
-          if (lanc.tipo === 'entrada') {
-            entradas += lanc.valor;
-          } else {
-            saidas += lanc.valor;
-            totalGastos += lanc.valor;
-          }
-
-          contagem++;
-        }
-      });
-
-      document.getElementById('saldo').textContent = 'Saldo: ' + formatarValor(entradas - saidas);
-      atualizarGrafico(entradas, saidas);
-
-      if (filtro) {
-        const [ano, mes] = filtro.split('-');
-        const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-        const nomeMes = meses[parseInt(mes) - 1];
-
-        relatorio.innerHTML = `
-          <strong>📅 Relatório de ${nomeMes}/${ano}</strong><br><br>
-          ✅ Entradas: <strong>${formatarValor(entradas)}</strong><br>
-          ❌ Saídas: <strong>${formatarValor(saidas)}</strong><br>
-          💰 Saldo do mês: <strong>${formatarValor(entradas - saidas)}</strong><br>
-          🔢 Nº de lançamentos: <strong>${contagem}</strong><br>
-          📉 Média de saídas: <strong>${contagem > 0 ? formatarValor(totalGastos / contagem) : 'R$ 0,00'}</strong>
-        `;
-      }
-    }
-
-    const ctx = document.getElementById('grafico').getContext('2d');
-    const grafico = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Entradas', 'Saídas'],
-        datasets: [{
-          label: 'Total',
-          data: [0, 0],
-          backgroundColor: ['green', 'red']
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: { beginAtZero: true }
-        }
-      }
-    });
-
-    function atualizarGrafico(entradas, saidas) {
-      grafico.data.datasets[0].data = [entradas, saidas];
-      grafico.update();
-    }
-  </script>
+  <!-- Primeira implementação removida para evitar conflito de variáveis duplicadas -->
 
   <script>
 const API_URL = 'https://sheetdb.io/api/v1/hauxcbu5wi2pf'; // 🔁 substitua pela sua URL da API
@@ -295,7 +160,7 @@ async function adicionarLancamento() {
   await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: novoLancamento })
+    body: JSON.stringify(novoLancamento)
   });
 
   limparFormulario();
@@ -308,9 +173,13 @@ async function excluirLancamento(id) {
 }
 
 async function buscarLancamentos() {
-  const res = await fetch(API_URL);
-  const data = await res.json();
-  return data;
+  try {
+    const res = await fetch(API_URL);
+    return await res.json();
+  } catch (error) {
+    alert('Erro ao buscar dados. Verifique sua conexão.');
+    return [];
+  }
 }
 
 function limparFormulario() {
